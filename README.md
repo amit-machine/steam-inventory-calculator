@@ -10,8 +10,8 @@ A Node.js tool to calculate the total value of your Steam inventory across multi
 * ♻️ Fetches each unique item price once per run across all accounts
 * ⏱️ Rate-limited API calls to avoid throttling
 * 🔁 Retry mechanism with exponential backoff
-* 💾 Local caching to minimize API usage
-* 📝 Skips unnecessary cache writes when nothing changed
+* 🍃 MongoDB storage for cached prices and portfolio history
+* 📝 Skips unnecessary cache database writes when nothing changed
 * 📊 Historical tracking of portfolio value
 * 👥 Multi-account support
 * ⚡ CLI-based execution with detailed logs
@@ -24,9 +24,11 @@ A Node.js tool to calculate the total value of your Steam inventory across multi
 ```bash
 src/
 ├── config/        # Configuration values and env parsing
+├── db/            # Mongoose connection setup
 ├── core/          # Account totals + portfolio history logic
+├── models/        # MongoDB models for cache and history
 ├── services/      # Steam API, cache handling, and price preparation
-├── data/          # Inventory + cache + history files
+├── data/          # Inventory input data
 └── index.js       # Entry point
 ```
 
@@ -37,8 +39,8 @@ src/
 The current version is optimized for larger inventories:
 
 * duplicate items across accounts are priced once per run and reused
-* `history.json` is loaded once and saved once per full run
-* `prices.json` is only saved when cached data actually changes
+* history entries are buffered during the run and inserted in one batch
+* cached prices are only written to MongoDB when data actually changes
 
 ---
 
@@ -49,7 +51,8 @@ This project started as a working CLI tool, then was improved with a focus on pe
 Key improvements:
 
 * reduced duplicate Steam price lookups by pricing shared items once per run
-* reduced unnecessary disk writes for cache and history files
+* replaced local file persistence with MongoDB and Mongoose models
+* reduced unnecessary database writes for cache and history updates
 * refactored logic into smaller helper functions with clearer naming
 * improved code readability with consistent formatting and function-level documentation comments
 
@@ -90,7 +93,20 @@ npm install
 
 ---
 
-### 3. Add your inventory
+### 3. Start MongoDB
+
+Make sure a MongoDB server is running locally or provide a remote connection string.
+
+Default local connection:
+
+```env
+MONGODB_URI=mongodb://127.0.0.1:27017
+MONGODB_DB_NAME=steam_inventory_calculator
+```
+
+---
+
+### 4. Add your inventory
 
 Edit:
 
@@ -170,8 +186,10 @@ Example:
 
 ## 💾 Data Storage
 
-* `src/data/prices.json` → Cached prices (auto-generated)
-* `src/data/history.json` → Portfolio history (auto-generated)
+MongoDB collections used by the app:
+
+* `pricecaches` → Cached Steam market prices
+* `portfoliohistories` → Historical portfolio snapshots
 
 ---
 
@@ -196,6 +214,8 @@ CURRENCY=24
 TAX_RATE=0.87
 REQUEST_DELAY=3000
 CACHE_TTL_DAYS=7
+MONGODB_URI=mongodb://127.0.0.1:27017
+MONGODB_DB_NAME=steam_inventory_calculator
 ```
 
 👉 Not required — defaults are already defined in code.
@@ -215,7 +235,8 @@ CACHE_TTL_DAYS=7
 * Node.js (ES Modules)
 * Axios (HTTP requests)
 * Bottleneck (rate limiting)
-* File System (JSON-based storage)
+* MongoDB
+* Mongoose
 
 ---
 
