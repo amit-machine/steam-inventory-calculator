@@ -1,33 +1,12 @@
 import axios from "axios";
 import Bottleneck from "bottleneck";
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import config from "../config/config.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const CACHE_FILE = path.join(__dirname, "../data/prices.json");
+import { PriceCache } from "../models/PriceCache.js";
 
 const limiter = new Bottleneck({
   maxConcurrent: 1,
   minTime: config.REQUEST_DELAY_MS
 });
-
-const loadCache = () => {
-  try {
-    if (!fs.existsSync(CACHE_FILE)) return {};
-    const data = fs.readFileSync(CACHE_FILE, "utf-8");
-    return data ? JSON.parse(data) : {};
-  } catch (err) {
-    console.error("⚠️ Invalid cache JSON, resetting...");
-    return {};
-  }
-};
-
-const saveCache = cache =>
-  fs.writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2));
 
 /* Converts Steam price text into a number the calculator can use. */
 const parseSteamPrice = priceText => {
@@ -55,6 +34,20 @@ const createPricedItem = (item, price) => ({
   totalPrice: price * item.quantity,
   afterTaxTotal: price * item.quantity * config.TAX_RATE
 });
+
+/* Converts database cache documents into the in-memory cache format used during a run. */
+const createCacheMap = cacheEntries => {
+  const cacheMap = {};
+
+  for (const entry of cacheEntries) {
+    cacheMap[entry.hashName] = {
+      price: entry.price,
+      lastUpdated: new Date(entry.lastUpdated).getTime()
+    };
+  }
+
+  return cacheMap;
+};
 
 /* Removes duplicate market items so each unique hash name is priced only once per run. */
 const getUniqueItems = items => {
@@ -138,12 +131,44 @@ const getPriceFromCacheOrApi = async (item, cache) => {
   };
 };
 
+/* Loads cached prices for the requested item names from MongoDB. */
+const loadCacheMap = async hashNames => {
+  const cacheEntries = await PriceCache.find({
+    hashName: { $in: hashNames }
+  }).lean();
+
+  return createCacheMap(cacheEntries);
+};
+
+/* Saves only the changed cache entries back into MongoDB using bulk upserts. */
+const saveUpdatedCacheEntries = async updatedEntries => {
+  if (updatedEntries.length === 0) {
+    return;
+  }
+
+  await PriceCache.bulkWrite(
+    updatedEntries.map(entry => ({
+      updateOne: {
+        filter: { hashName: entry.hashName },
+        update: {
+          $set: {
+            price: entry.price,
+            lastUpdated: new Date(entry.lastUpdated)
+          }
+        },
+        upsert: true
+      }
+    }))
+  );
+};
+
 /* Builds a map of item names to prices for all unique items in the run. */
 export async function getPriceMap(items) {
-  const cache = loadCache();
   const uniqueItems = getUniqueItems(items);
+  const uniqueHashNames = uniqueItems.map(item => item.hashName);
+  const cache = await loadCacheMap(uniqueHashNames);
   const priceMap = {};
-  let cacheChanged = false;
+  const updatedCacheEntries = [];
 
   console.log(`\n🔍 Processing ${uniqueItems.length} unique items...\n`);
 
@@ -156,14 +181,21 @@ export async function getPriceMap(items) {
 
     const { price, cacheUpdated } = await getPriceFromCacheOrApi(item, cache);
     priceMap[item.hashName] = price;
-    cacheChanged = cacheChanged || cacheUpdated;
+
+    if (cacheUpdated) {
+      updatedCacheEntries.push({
+        hashName: item.hashName,
+        price,
+        lastUpdated: cache[item.hashName].lastUpdated
+      });
+    }
   }
 
-  if (cacheChanged) {
-    console.log("\n💾 Saving cache...\n");
-    saveCache(cache);
+  if (updatedCacheEntries.length > 0) {
+    console.log("\n💾 Saving cache to MongoDB...\n");
+    await saveUpdatedCacheEntries(updatedCacheEntries);
   } else {
-    console.log("\n💾 Cache unchanged, skipping save.\n");
+    console.log("\n💾 Cache unchanged, skipping database update.\n");
   }
 
   return priceMap;

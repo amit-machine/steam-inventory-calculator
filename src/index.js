@@ -1,5 +1,6 @@
 import accounts from "./data/inventory.js";
-import { loadPortfolioHistory, processAccount, savePortfolioHistory } from "./core/processor.js";
+import { createPortfolioHistoryStore, processAccount, savePortfolioHistory } from "./core/processor.js";
+import { connectToDatabase, disconnectFromDatabase } from "./db/mongoose.js";
 import { getPriceMap } from "./services/priceService.js";
 
 /* Creates the starting totals used for the final portfolio summary. */
@@ -60,30 +61,36 @@ async function run() {
   const portfolioSummary = createEmptyPortfolioSummary();
   const accountList = getAccountList(accounts);
   const allItems = getAllItems(accountList);
-  const history = loadPortfolioHistory();
-  const priceMap = await getPriceMap(allItems);
+  const history = createPortfolioHistoryStore();
 
-  for (let index = 0; index < accountList.length; index++) {
-    const account = accountList[index];
+  try {
+    await connectToDatabase();
+    const priceMap = await getPriceMap(allItems);
 
-    console.log(`\n📦 [${index + 1}/${accountList.length}] Processing ${account.name}...`);
-    console.log(`Items: ${account.items.length}`);
+    for (let index = 0; index < accountList.length; index++) {
+      const account = accountList[index];
 
-    const startTime = Date.now();
-    const accountSummary = await processAccount(account.items, account.name, priceMap, history);
-    const endTime = Date.now();
+      console.log(`\n📦 [${index + 1}/${accountList.length}] Processing ${account.name}...`);
+      console.log(`Items: ${account.items.length}`);
 
-    if (!accountSummary) {
-      console.log(`⚠️ Skipped ${account.name}`);
-      continue;
+      const startTime = Date.now();
+      const accountSummary = await processAccount(account.items, account.name, priceMap, history);
+      const endTime = Date.now();
+
+      if (!accountSummary) {
+        console.log(`⚠️ Skipped ${account.name}`);
+        continue;
+      }
+
+      addAccountToPortfolio(portfolioSummary, accountSummary);
+      console.log(`✅ Done ${account.name} in ${((endTime - startTime) / 1000).toFixed(2)}s`);
     }
 
-    addAccountToPortfolio(portfolioSummary, accountSummary);
-    console.log(`✅ Done ${account.name} in ${((endTime - startTime) / 1000).toFixed(2)}s`);
+    await savePortfolioHistory(history);
+    printPortfolioSummary(portfolioSummary);
+  } finally {
+    await disconnectFromDatabase();
   }
-
-  savePortfolioHistory(history);
-  printPortfolioSummary(portfolioSummary);
 }
 
 run();
