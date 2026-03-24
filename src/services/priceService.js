@@ -1,9 +1,9 @@
 import axios from "axios";
 import Bottleneck from "bottleneck";
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import config from "../config/config.js";
-import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,8 +14,6 @@ const limiter = new Bottleneck({
   maxConcurrent: 1,
   minTime: config.REQUEST_DELAY_MS
 });
-
-// ---------------- CACHE ----------------
 
 const loadCache = () => {
   try {
@@ -31,7 +29,7 @@ const loadCache = () => {
 const saveCache = cache =>
   fs.writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2));
 
-// Converts Steam price text into a number the calculator can use.
+/* Converts Steam price text into a number the calculator can use. */
 const parseSteamPrice = priceText => {
   try {
     if (!priceText) return 0;
@@ -43,13 +41,13 @@ const parseSteamPrice = priceText => {
   }
 };
 
-// Checks whether a cached price is still fresh enough to reuse.
+/* Checks whether a cached price is still fresh enough to reuse. */
 const isFreshCacheEntry = cacheEntry =>
   cacheEntry &&
   cacheEntry.price > 0 &&
   Date.now() - cacheEntry.lastUpdated < config.CACHE_TTL_MS;
 
-// Creates the final priced item object for reporting and totals.
+/* Creates the final priced item object for reporting and totals. */
 const createPricedItem = (item, price) => ({
   name: item.hashName,
   price,
@@ -58,7 +56,7 @@ const createPricedItem = (item, price) => ({
   afterTaxTotal: price * item.quantity * config.TAX_RATE
 });
 
-// Removes duplicate market items so each unique hash name is priced only once per run.
+/* Removes duplicate market items so each unique hash name is priced only once per run. */
 const getUniqueItems = items => {
   const uniqueItems = [];
   const seenHashNames = new Set();
@@ -75,7 +73,7 @@ const getUniqueItems = items => {
   return uniqueItems;
 };
 
-// Fetches Steam market pricing for one item with retry support for temporary failures.
+/* Fetches Steam market pricing for one item with retry support for temporary failures. */
 async function fetchMarketPriceOverview(hashName, retries = 3, delay = 5000) {
   try {
     const { data } = await axios.get(
@@ -105,7 +103,7 @@ async function fetchMarketPriceOverview(hashName, retries = 3, delay = 5000) {
   }
 }
 
-// Returns a price from cache when possible, otherwise fetches it and updates the cache.
+/* Returns a price from cache when possible, otherwise fetches it and updates the cache. */
 const getPriceFromCacheOrApi = async (item, cache) => {
   const cachedEntry = cache[item.hashName];
 
@@ -119,9 +117,7 @@ const getPriceFromCacheOrApi = async (item, cache) => {
 
   console.log("   🔵 Fetching from API...");
 
-  const marketData = await limiter.schedule(() =>
-    fetchMarketPriceOverview(item.hashName)
-  );
+  const marketData = await limiter.schedule(() => fetchMarketPriceOverview(item.hashName));
 
   const price = marketData ? parseSteamPrice(marketData.lowest_price) : 0;
 
@@ -142,7 +138,7 @@ const getPriceFromCacheOrApi = async (item, cache) => {
   };
 };
 
-// Builds a map of item names to prices for all unique items in the run.
+/* Builds a map of item names to prices for all unique items in the run. */
 export async function getPriceMap(items) {
   const cache = loadCache();
   const uniqueItems = getUniqueItems(items);
@@ -173,7 +169,7 @@ export async function getPriceMap(items) {
   return priceMap;
 }
 
-// Converts raw inventory items into priced items using an existing or newly created price map.
+/* Converts raw inventory items into priced items using an existing or newly created price map. */
 export async function getPrices(items, priceMap = null) {
   const resolvedPriceMap = priceMap || (await getPriceMap(items));
   const pricedItems = [];

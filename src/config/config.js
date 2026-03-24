@@ -1,6 +1,6 @@
 const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
 
-// Converts environment variable strings into numbers and falls back safely when missing.
+/* Converts environment variable strings into numbers and falls back safely when missing. */
 const toNumber = (value, fallbackValue) => {
   const parsedValue = Number(value);
   return Number.isFinite(parsedValue) ? parsedValue : fallbackValue;
