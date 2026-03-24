@@ -1,0 +1,19 @@
+{
+  "name": "storage-scripts",
+  "version": "1.0.0",
+  "description": "Steam inventory portfolio calculator",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "calculate": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "author": "Amit",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.12.2",
+    "bottleneck": "^2.19.5",
+    "dotenv": "^16.4.5"
+  }
+}
