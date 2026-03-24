@@ -188,8 +188,8 @@ Example:
 
 MongoDB collections used by the app:
 
-* `pricecaches` → Cached Steam market prices
-* `portfoliohistories` → Historical portfolio snapshots
+* `price_cache` → Cached Steam market prices
+* `portfolio_history` → Historical portfolio snapshots
 
 ---
 

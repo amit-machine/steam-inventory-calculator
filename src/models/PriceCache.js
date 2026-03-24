@@ -19,7 +19,8 @@ const priceCacheSchema = new mongoose.Schema(
     }
   },
   {
-    versionKey: false
+    versionKey: false,
+    collection: "price_cache"
   }
 );
 

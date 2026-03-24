@@ -19,7 +19,8 @@ const portfolioHistorySchema = new mongoose.Schema(
     }
   },
   {
-    versionKey: false
+    versionKey: false,
+    collection: "portfolio_history"
   }
 );
 
