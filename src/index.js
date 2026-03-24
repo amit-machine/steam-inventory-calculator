@@ -1,5 +1,9 @@
 import accounts from "./data/inventory.js";
-import { processAccount } from "./core/processor.js";
+import {
+  loadPortfolioHistory,
+  processAccount,
+  savePortfolioHistory
+} from "./core/processor.js";
 import { getPriceMap } from "./services/priceService.js";
 
 async function run() {
@@ -9,7 +13,7 @@ async function run() {
 
   const accountEntries = Object.entries(accounts);
   const allItems = accountEntries.flatMap(([, items]) => items);
-
+  const history = loadPortfolioHistory();
   const priceMap = await getPriceMap(allItems);
 
   for (let i = 0; i < accountEntries.length; i++) {
@@ -20,7 +24,7 @@ async function run() {
 
     const start = Date.now();
 
-    const result = await processAccount(items, name, priceMap);
+    const result = await processAccount(items, name, priceMap, history);
 
     const end = Date.now();
 
@@ -41,6 +45,8 @@ async function run() {
   console.log(`💸 After Tax: ₹${portfolio.afterTax}`);
   console.log(`📦 Total Items: ${portfolio.itemCount}`);
   console.log("===============================\n");
+
+  savePortfolioHistory(history);
 }
 
 run();

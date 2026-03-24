@@ -23,7 +23,20 @@ const loadHistory = () => {
 const saveHistory = history =>
   fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
 
-export async function processAccount(items, accountName, priceMap = null) {
+export function loadPortfolioHistory() {
+  return loadHistory();
+}
+
+export function savePortfolioHistory(history) {
+  saveHistory(history);
+}
+
+export async function processAccount(
+  items,
+  accountName,
+  priceMap = null,
+  history = null
+) {
   if (!items || items.length === 0) return null;
 
   let data = await getPrices(items, priceMap);
@@ -45,15 +58,17 @@ export async function processAccount(items, accountName, priceMap = null) {
     Items: data
   };
 
-  const history = loadHistory();
-  if (!history[accountName]) history[accountName] = [];
+  const nextHistory = history || loadHistory();
+  if (!nextHistory[accountName]) nextHistory[accountName] = [];
 
-  history[accountName].push({
+  nextHistory[accountName].push({
     timestamp: new Date().toISOString(),
     StorageValue: finalData.StorageValue
   });
 
-  saveHistory(history);
+  if (!history) {
+    saveHistory(nextHistory);
+  }
 
   return finalData;
 }

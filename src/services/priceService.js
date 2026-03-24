@@ -31,8 +31,6 @@ const loadCache = () => {
 const saveCache = cache =>
   fs.writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2));
 
-// ---------------- HELPERS ----------------
-
 const priceFormat = str => {
   try {
     if (!str) return 0;
@@ -55,8 +53,6 @@ const buildResult = (item, price) => ({
   totalPrice: price * item.quantity,
   afterTaxTotal: price * item.quantity * CONFIG.TAX
 });
-
-// ---------------- API ----------------
 
 async function getPricesUrl(url, retries = 3, delay = 5000) {
   try {
@@ -86,14 +82,12 @@ async function getPricesUrl(url, retries = 3, delay = 5000) {
     return null;
   }
 }
-
-// ---------------- MAIN ----------------
-
 export async function getPriceMap(items) {
   const cache = loadCache();
   const uniqueItems = [];
   const seenItems = new Set();
   const priceMap = {};
+  let cacheChanged = false;
 
   for (const item of items) {
     if (seenItems.has(item.hashName)) continue;
@@ -108,10 +102,9 @@ export async function getPriceMap(items) {
   for (const item of uniqueItems) {
     index++;
 
-    const cached = cache[item.hashName];
-
-    // Progress indicator
     console.log(`(${index}/${uniqueItems.length}) ${item.hashName}`);
+
+    const cached = cache[item.hashName];
 
     if (hasFreshCache(cached)) {
       console.log("   🟡 Using cache");
@@ -137,11 +130,16 @@ export async function getPriceMap(items) {
       price,
       lastUpdated: Date.now()
     };
+    cacheChanged = true;
     priceMap[item.hashName] = price;
   }
 
-  console.log("\n💾 Saving cache...\n");
-  saveCache(cache);
+  if (cacheChanged) {
+    console.log("\n💾 Saving cache...\n");
+    saveCache(cache);
+  } else {
+    console.log("\n💾 Cache unchanged, skipping save.\n");
+  }
 
   return priceMap;
 }
