@@ -7,12 +7,15 @@ A Node.js tool to calculate the total value of your Steam inventory across multi
 ## 🚀 Features
 
 * 📡 Fetches real-time prices from Steam Market
+* ♻️ Fetches each unique item price once per run across all accounts
 * ⏱️ Rate-limited API calls to avoid throttling
 * 🔁 Retry mechanism with exponential backoff
 * 💾 Local caching to minimize API usage
+* 📝 Skips unnecessary cache writes when nothing changed
 * 📊 Historical tracking of portfolio value
 * 👥 Multi-account support
 * ⚡ CLI-based execution with detailed logs
+* 📚 Beginner-friendly code structure with small named helper functions
 
 ---
 
@@ -20,12 +23,22 @@ A Node.js tool to calculate the total value of your Steam inventory across multi
 
 ```bash
 src/
-├── config/        # Configuration (constants + optional env overrides)
-├── core/          # Business logic (account processing)
-├── services/      # External API + caching logic
+├── config/        # Configuration values and env parsing
+├── core/          # Account totals + portfolio history logic
+├── services/      # Steam API, cache handling, and price preparation
 ├── data/          # Inventory + cache + history files
 └── index.js       # Entry point
 ```
+
+---
+
+## ⚡ Performance Notes
+
+The current version is optimized for larger inventories:
+
+* duplicate items across accounts are priced once per run and reused
+* `history.json` is loaded once and saved once per full run
+* `prices.json` is only saved when cached data actually changes
 
 ---
 
@@ -130,6 +143,16 @@ Example:
 
 * `src/data/prices.json` → Cached prices (auto-generated)
 * `src/data/history.json` → Portfolio history (auto-generated)
+
+---
+
+## 🧠 Code Style
+
+The codebase is intentionally written to stay beginner-friendly:
+
+* small helper functions with descriptive names
+* top-of-function block comments instead of inline code comments
+* simple control flow that is easier to trace while learning
 
 ---
 
