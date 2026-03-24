@@ -42,6 +42,35 @@ The current version is optimized for larger inventories:
 
 ---
 
+## 🛠️ What I Optimized
+
+This project started as a working CLI tool, then was improved with a focus on performance, maintainability, and beginner-friendly readability.
+
+Key improvements:
+
+* reduced duplicate Steam price lookups by pricing shared items once per run
+* reduced unnecessary disk writes for cache and history files
+* refactored logic into smaller helper functions with clearer naming
+* improved code readability with consistent formatting and function-level documentation comments
+
+These changes make the app faster on larger inventories and easier to understand for new contributors.
+
+---
+
+## 🧭 Runtime Flow
+
+The application runs in this order:
+
+1. load accounts from `src/data/inventory.js`
+2. combine all account items into one list
+3. fetch or reuse prices for each unique market item
+4. process each account using the shared price map
+5. update history and print the final portfolio summary
+
+This design keeps the API usage efficient while preserving simple CLI behavior.
+
+---
+
 ## ⚙️ Setup
 
 ### 1. Clone the repository
