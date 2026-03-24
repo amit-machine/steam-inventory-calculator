@@ -170,8 +170,8 @@ CACHE_TTL_DAYS=7
 ## 🚧 Future Improvements
 
 * 🌐 REST API (Express)
-* 📊 Dashboard UI (Angular / React)
-* 🗄️ Database integration (MongoDB / PostgreSQL)
+* 📊 Dashboard UI (Angular)
+* 🗄️ Database integration (MongoDB)
 * ⏲️ Scheduled tracking (cron jobs)
 * 🔔 Price alerts / notifications
 * ⚡ Parallel processing with batching
