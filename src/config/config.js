@@ -1,12 +1,17 @@
-const CONFIG = {
-  APP_ID: process.env.APP_ID || 730,
-  COUNTRY: process.env.COUNTRY || "IN",
-  CURRENCY: process.env.CURRENCY || 24,
+const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
 
-  TAX: process.env.TAX_RATE || 0.87,
-
-  REQUEST_DELAY: process.env.REQUEST_DELAY || 3000,
-  CACHE_TTL: (process.env.CACHE_TTL_DAYS || 7) * 24 * 60 * 60 * 1000
+const toNumber = (value, fallbackValue) => {
+  const parsedValue = Number(value);
+  return Number.isFinite(parsedValue) ? parsedValue : fallbackValue;
 };
 
-export default CONFIG;
+const config = {
+  APP_ID: toNumber(process.env.APP_ID, 730),
+  COUNTRY: process.env.COUNTRY || "IN",
+  CURRENCY: toNumber(process.env.CURRENCY, 24),
+  TAX_RATE: toNumber(process.env.TAX_RATE, 0.87),
+  REQUEST_DELAY_MS: toNumber(process.env.REQUEST_DELAY, 3000),
+  CACHE_TTL_MS: toNumber(process.env.CACHE_TTL_DAYS, 7) * ONE_DAY_IN_MS
+};
+
+export default config;

@@ -2,7 +2,7 @@ import axios from "axios";
 import Bottleneck from "bottleneck";
 import fs from "fs";
 import path from "path";
-import CONFIG from "../config/config.js";
+import config from "../config/config.js";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -12,7 +12,7 @@ const CACHE_FILE = path.join(__dirname, "../data/prices.json");
 
 const limiter = new Bottleneck({
   maxConcurrent: 1,
-  minTime: CONFIG.REQUEST_DELAY
+  minTime: config.REQUEST_DELAY_MS
 });
 
 // ---------------- CACHE ----------------
@@ -31,39 +31,56 @@ const loadCache = () => {
 const saveCache = cache =>
   fs.writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2));
 
-const priceFormat = str => {
+const parseSteamPrice = priceText => {
   try {
-    if (!str) return 0;
-    const num = str.split(" ")[1]?.replace(",", "");
-    return num ? parseFloat(num) : 0;
+    if (!priceText) return 0;
+
+    const valuePart = priceText.split(" ")[1]?.replace(",", "");
+    return valuePart ? parseFloat(valuePart) : 0;
   } catch {
     return 0;
   }
 };
 
-const hasFreshCache = cached =>
-  cached &&
-  cached.price > 0 &&
-  Date.now() - cached.lastUpdated < CONFIG.CACHE_TTL;
+const isFreshCacheEntry = cacheEntry =>
+  cacheEntry &&
+  cacheEntry.price > 0 &&
+  Date.now() - cacheEntry.lastUpdated < config.CACHE_TTL_MS;
 
-const buildResult = (item, price) => ({
+const createPricedItem = (item, price) => ({
   name: item.hashName,
   price,
   quantity: item.quantity,
   totalPrice: price * item.quantity,
-  afterTaxTotal: price * item.quantity * CONFIG.TAX
+  afterTaxTotal: price * item.quantity * config.TAX_RATE
 });
 
-async function getPricesUrl(url, retries = 3, delay = 5000) {
+const getUniqueItems = items => {
+  const uniqueItems = [];
+  const seenHashNames = new Set();
+
+  for (const item of items) {
+    if (seenHashNames.has(item.hashName)) {
+      continue;
+    }
+
+    seenHashNames.add(item.hashName);
+    uniqueItems.push(item);
+  }
+
+  return uniqueItems;
+};
+
+async function fetchMarketPriceOverview(hashName, retries = 3, delay = 5000) {
   try {
     const { data } = await axios.get(
       "https://steamcommunity.com/market/priceoverview/",
       {
         params: {
-          appid: CONFIG.APP_ID,
-          country: CONFIG.COUNTRY,
-          currency: CONFIG.CURRENCY,
-          market_hash_name: url
+          appid: config.APP_ID,
+          country: config.COUNTRY,
+          currency: config.CURRENCY,
+          market_hash_name: hashName
         }
       }
     );
@@ -73,27 +90,57 @@ async function getPricesUrl(url, retries = 3, delay = 5000) {
     const status = err.response?.status;
 
     if ((status === 429 || (status >= 500 && status < 600)) && retries > 0) {
-      console.log(`⏳ Retry ${url} (status ${status}) in ${delay}ms...`);
+      console.log(`⏳ Retry ${hashName} (status ${status}) in ${delay}ms...`);
       await new Promise(r => setTimeout(r, delay));
-      return getPricesUrl(url, retries - 1, delay * 2);
+      return fetchMarketPriceOverview(hashName, retries - 1, delay * 2);
     }
 
-    console.error(`❌ Failed: ${url}`);
+    console.error(`❌ Failed: ${hashName}`);
     return null;
   }
 }
+
+const getPriceFromCacheOrApi = async (item, cache) => {
+  const cachedEntry = cache[item.hashName];
+
+  if (isFreshCacheEntry(cachedEntry)) {
+    console.log("   🟡 Using cache");
+    return {
+      price: cachedEntry.price,
+      cacheUpdated: false
+    };
+  }
+
+  console.log("   🔵 Fetching from API...");
+
+  const marketData = await limiter.schedule(() =>
+    fetchMarketPriceOverview(item.hashName)
+  );
+
+  const price = marketData ? parseSteamPrice(marketData.lowest_price) : 0;
+
+  if (!price) {
+    console.log("   ⚠️ No price found");
+  } else {
+    console.log(`   💰 ₹${price}`);
+  }
+
+  cache[item.hashName] = {
+    price,
+    lastUpdated: Date.now()
+  };
+
+  return {
+    price,
+    cacheUpdated: true
+  };
+};
+
 export async function getPriceMap(items) {
   const cache = loadCache();
-  const uniqueItems = [];
-  const seenItems = new Set();
+  const uniqueItems = getUniqueItems(items);
   const priceMap = {};
   let cacheChanged = false;
-
-  for (const item of items) {
-    if (seenItems.has(item.hashName)) continue;
-    seenItems.add(item.hashName);
-    uniqueItems.push(item);
-  }
 
   console.log(`\n🔍 Processing ${uniqueItems.length} unique items...\n`);
 
@@ -104,34 +151,9 @@ export async function getPriceMap(items) {
 
     console.log(`(${index}/${uniqueItems.length}) ${item.hashName}`);
 
-    const cached = cache[item.hashName];
-
-    if (hasFreshCache(cached)) {
-      console.log("   🟡 Using cache");
-      priceMap[item.hashName] = cached.price;
-      continue;
-    }
-
-    console.log("   🔵 Fetching from API...");
-
-    const data = await limiter.schedule(() =>
-      getPricesUrl(item.hashName)
-    );
-
-    const price = data ? priceFormat(data.lowest_price) : 0;
-
-    if (!price) {
-      console.log("   ⚠️ No price found");
-    } else {
-      console.log(`   💰 ₹${price}`);
-    }
-
-    cache[item.hashName] = {
-      price,
-      lastUpdated: Date.now()
-    };
-    cacheChanged = true;
+    const { price, cacheUpdated } = await getPriceFromCacheOrApi(item, cache);
     priceMap[item.hashName] = price;
+    cacheChanged = cacheChanged || cacheUpdated;
   }
 
   if (cacheChanged) {
@@ -146,5 +168,12 @@ export async function getPriceMap(items) {
 
 export async function getPrices(items, priceMap = null) {
   const resolvedPriceMap = priceMap || (await getPriceMap(items));
-  return items.map(item => buildResult(item, resolvedPriceMap[item.hashName] || 0));
+  const pricedItems = [];
+
+  for (const item of items) {
+    const price = resolvedPriceMap[item.hashName] || 0;
+    pricedItems.push(createPricedItem(item, price));
+  }
+
+  return pricedItems;
 }

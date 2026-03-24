@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { getPrices } from "../services/priceService.js";
-import CONFIG from "../config/config.js";
+import config from "../config/config.js";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -23,6 +23,43 @@ const loadHistory = () => {
 const saveHistory = history =>
   fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
 
+const calculateAccountTotals = pricedItems => {
+  const totals = {
+    storageValue: 0,
+    itemCount: 0
+  };
+
+  for (const item of pricedItems) {
+    totals.storageValue += item.totalPrice;
+    totals.itemCount += item.quantity;
+  }
+
+  return totals;
+};
+
+const buildAccountSummary = (accountName, pricedItems) => {
+  const totals = calculateAccountTotals(pricedItems);
+
+  return {
+    account: accountName,
+    StorageValue: Math.floor(totals.storageValue),
+    AfterTax: Math.floor(totals.storageValue * config.TAX_RATE),
+    Count: totals.itemCount,
+    Items: pricedItems
+  };
+};
+
+const addHistorySnapshot = (history, accountName, storageValue) => {
+  if (!history[accountName]) {
+    history[accountName] = [];
+  }
+
+  history[accountName].push({
+    timestamp: new Date().toISOString(),
+    StorageValue: storageValue
+  });
+};
+
 export function loadPortfolioHistory() {
   return loadHistory();
 }
@@ -39,36 +76,15 @@ export async function processAccount(
 ) {
   if (!items || items.length === 0) return null;
 
-  let data = await getPrices(items, priceMap);
-
-  let totals = data.reduce(
-    (acc, x) => {
-      acc.total += x.totalPrice;
-      acc.count += x.quantity;
-      return acc;
-    },
-    { total: 0, count: 0 }
-  );
-
-  let finalData = {
-    account: accountName,
-    StorageValue: parseInt(totals.total),
-    AfterTax: parseInt(totals.total * CONFIG.TAX),
-    Count: totals.count,
-    Items: data
-  };
+  const pricedItems = await getPrices(items, priceMap);
+  const accountSummary = buildAccountSummary(accountName, pricedItems);
 
   const nextHistory = history || loadHistory();
-  if (!nextHistory[accountName]) nextHistory[accountName] = [];
-
-  nextHistory[accountName].push({
-    timestamp: new Date().toISOString(),
-    StorageValue: finalData.StorageValue
-  });
+  addHistorySnapshot(nextHistory, accountName, accountSummary.StorageValue);
 
   if (!history) {
     saveHistory(nextHistory);
   }
 
-  return finalData;
+  return accountSummary;
 }

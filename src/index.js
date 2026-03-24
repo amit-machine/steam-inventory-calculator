@@ -6,47 +6,87 @@ import {
 } from "./core/processor.js";
 import { getPriceMap } from "./services/priceService.js";
 
-async function run() {
-  console.log("🚀 Starting inventory calculation...\n");
+const createEmptyPortfolioSummary = () => ({
+  totalValue: 0,
+  afterTax: 0,
+  itemCount: 0
+});
 
-  let portfolio = { totalValue: 0, afterTax: 0, itemCount: 0 };
+const getAccountList = accountsByName => {
+  const accountList = [];
 
-  const accountEntries = Object.entries(accounts);
-  const allItems = accountEntries.flatMap(([, items]) => items);
-  const history = loadPortfolioHistory();
-  const priceMap = await getPriceMap(allItems);
+  for (const accountName in accountsByName) {
+    accountList.push({
+      name: accountName,
+      items: accountsByName[accountName]
+    });
+  }
 
-  for (let i = 0; i < accountEntries.length; i++) {
-    const [name, items] = accountEntries[i];
+  return accountList;
+};
 
-    console.log(`\n📦 [${i + 1}/${accountEntries.length}] Processing ${name}...`);
-    console.log(`Items: ${items.length}`);
+const getAllItems = accountList => {
+  const allItems = [];
 
-    const start = Date.now();
-
-    const result = await processAccount(items, name, priceMap, history);
-
-    const end = Date.now();
-
-    if (result) {
-      portfolio.totalValue += result.StorageValue;
-      portfolio.afterTax += result.AfterTax;
-      portfolio.itemCount += result.Count;
-
-      console.log(`✅ Done ${name} in ${((end - start) / 1000).toFixed(2)}s`);
-    } else {
-      console.log(`⚠️ Skipped ${name}`);
+  for (const account of accountList) {
+    for (const item of account.items) {
+      allItems.push(item);
     }
   }
 
+  return allItems;
+};
+
+const addAccountToPortfolio = (portfolioSummary, accountSummary) => {
+  portfolioSummary.totalValue += accountSummary.StorageValue;
+  portfolioSummary.afterTax += accountSummary.AfterTax;
+  portfolioSummary.itemCount += accountSummary.Count;
+};
+
+const printPortfolioSummary = portfolioSummary => {
   console.log("\n===============================");
   console.log("📊 Portfolio Summary");
-  console.log(`💰 Total Value: ₹${portfolio.totalValue}`);
-  console.log(`💸 After Tax: ₹${portfolio.afterTax}`);
-  console.log(`📦 Total Items: ${portfolio.itemCount}`);
+  console.log(`💰 Total Value: ₹${portfolioSummary.totalValue}`);
+  console.log(`💸 After Tax: ₹${portfolioSummary.afterTax}`);
+  console.log(`📦 Total Items: ${portfolioSummary.itemCount}`);
   console.log("===============================\n");
+};
+
+async function run() {
+  console.log("🚀 Starting inventory calculation...\n");
+
+  const portfolioSummary = createEmptyPortfolioSummary();
+  const accountList = getAccountList(accounts);
+  const allItems = getAllItems(accountList);
+  const history = loadPortfolioHistory();
+  const priceMap = await getPriceMap(allItems);
+
+  for (let index = 0; index < accountList.length; index++) {
+    const account = accountList[index];
+
+    console.log(`\n📦 [${index + 1}/${accountList.length}] Processing ${account.name}...`);
+    console.log(`Items: ${account.items.length}`);
+
+    const startTime = Date.now();
+    const accountSummary = await processAccount(
+      account.items,
+      account.name,
+      priceMap,
+      history
+    );
+    const endTime = Date.now();
+
+    if (!accountSummary) {
+      console.log(`⚠️ Skipped ${account.name}`);
+      continue;
+    }
+
+    addAccountToPortfolio(portfolioSummary, accountSummary);
+    console.log(`✅ Done ${account.name} in ${((endTime - startTime) / 1000).toFixed(2)}s`);
+  }
 
   savePortfolioHistory(history);
+  printPortfolioSummary(portfolioSummary);
 }
 
 run();
