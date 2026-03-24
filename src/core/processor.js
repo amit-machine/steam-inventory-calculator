@@ -23,10 +23,10 @@ const loadHistory = () => {
 const saveHistory = history =>
   fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
 
-export async function processAccount(items, accountName) {
+export async function processAccount(items, accountName, priceMap = null) {
   if (!items || items.length === 0) return null;
 
-  let data = await getPrices(items);
+  let data = await getPrices(items, priceMap);
 
   let totals = data.reduce(
     (acc, x) => {

@@ -43,6 +43,19 @@ const priceFormat = str => {
   }
 };
 
+const hasFreshCache = cached =>
+  cached &&
+  cached.price > 0 &&
+  Date.now() - cached.lastUpdated < CONFIG.CACHE_TTL;
+
+const buildResult = (item, price) => ({
+  name: item.hashName,
+  price,
+  quantity: item.quantity,
+  totalPrice: price * item.quantity,
+  afterTaxTotal: price * item.quantity * CONFIG.TAX
+});
+
 // ---------------- API ----------------
 
 async function getPricesUrl(url, retries = 3, delay = 5000) {
@@ -76,40 +89,33 @@ async function getPricesUrl(url, retries = 3, delay = 5000) {
 
 // ---------------- MAIN ----------------
 
-export async function getPrices(items) {
-  let cache = loadCache();
-  const results = [];
+export async function getPriceMap(items) {
+  const cache = loadCache();
+  const uniqueItems = [];
+  const seenItems = new Set();
+  const priceMap = {};
 
-  console.log(`\n🔍 Processing ${items.length} items...\n`);
+  for (const item of items) {
+    if (seenItems.has(item.hashName)) continue;
+    seenItems.add(item.hashName);
+    uniqueItems.push(item);
+  }
+
+  console.log(`\n🔍 Processing ${uniqueItems.length} unique items...\n`);
 
   let index = 0;
 
-  for (let item of items) {
+  for (const item of uniqueItems) {
     index++;
 
     const cached = cache[item.hashName];
 
-    const useCache =
-      cached &&
-      cached.price > 0 &&
-      Date.now() - cached.lastUpdated < CONFIG.CACHE_TTL;
-
     // Progress indicator
-    console.log(
-      `(${index}/${items.length}) ${item.hashName}`
-    );
+    console.log(`(${index}/${uniqueItems.length}) ${item.hashName}`);
 
-    if (useCache) {
+    if (hasFreshCache(cached)) {
       console.log("   🟡 Using cache");
-
-      results.push({
-        name: item.hashName,
-        price: cached.price,
-        quantity: item.quantity,
-        totalPrice: cached.price * item.quantity,
-        afterTaxTotal: cached.price * item.quantity * CONFIG.TAX
-      });
-
+      priceMap[item.hashName] = cached.price;
       continue;
     }
 
@@ -131,18 +137,16 @@ export async function getPrices(items) {
       price,
       lastUpdated: Date.now()
     };
-
-    results.push({
-      name: item.hashName,
-      price,
-      quantity: item.quantity,
-      totalPrice: price * item.quantity,
-      afterTaxTotal: price * item.quantity * CONFIG.TAX
-    });
+    priceMap[item.hashName] = price;
   }
 
   console.log("\n💾 Saving cache...\n");
   saveCache(cache);
 
-  return results;
+  return priceMap;
+}
+
+export async function getPrices(items, priceMap = null) {
+  const resolvedPriceMap = priceMap || (await getPriceMap(items));
+  return items.map(item => buildResult(item, resolvedPriceMap[item.hashName] || 0));
 }

@@ -1,5 +1,6 @@
 import accounts from "./data/inventory.js";
 import { processAccount } from "./core/processor.js";
+import { getPriceMap } from "./services/priceService.js";
 
 async function run() {
   console.log("🚀 Starting inventory calculation...\n");
@@ -7,6 +8,9 @@ async function run() {
   let portfolio = { totalValue: 0, afterTax: 0, itemCount: 0 };
 
   const accountEntries = Object.entries(accounts);
+  const allItems = accountEntries.flatMap(([, items]) => items);
+
+  const priceMap = await getPriceMap(allItems);
 
   for (let i = 0; i < accountEntries.length; i++) {
     const [name, items] = accountEntries[i];
@@ -16,7 +20,7 @@ async function run() {
 
     const start = Date.now();
 
-    const result = await processAccount(items, name);
+    const result = await processAccount(items, name, priceMap);
 
     const end = Date.now();
 
