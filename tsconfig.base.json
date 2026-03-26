@@ -18,8 +18,7 @@
       "data-access": ["libs/portfolio/data-access/src/index.ts"],
       "api-contracts": ["libs/portfolio/api-contracts/src/index.ts"],
       "core": ["libs/portfolio/core/src/index.ts"],
-      "api-feature": ["libs/portfolio/api-feature/src/index.ts"],
-      "utils": ["libs/shared/utils/src/index.ts"]
+      "api-feature": ["libs/portfolio/api-feature/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

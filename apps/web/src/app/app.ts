@@ -1,13 +1,22 @@
 import { Component } from '@angular/core';
-import { RouterModule } from '@angular/router';
-import { NxWelcome } from './nx-welcome';
 
 @Component({
-  imports: [NxWelcome, RouterModule],
   selector: 'app-root',
-  templateUrl: './app.html',
-  styleUrl: './app.scss',
+  standalone: true,
+  template: `
+    <main class="app-shell">
+      <h1>Steam Inventory Dashboard</h1>
+      <p>The Angular frontend is ready to connect to the Express portfolio API.</p>
+    </main>
+  `,
+  styles: [
+    `
+      .app-shell {
+        padding: 2rem;
+        font-family: sans-serif;
+      }
+    `,
+  ],
 })
 export class App {
-  protected title = 'web';
 }
