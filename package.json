@@ -3,11 +3,14 @@
   "version": "1.0.0",
   "description": "Steam inventory portfolio calculator",
   "type": "module",
-  "main": "src/index.js",
+  "private": true,
   "scripts": {
-    "start": "node src/index.js",
-    "calculate": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "start": "nx serve api",
+    "start:api": "nx serve api",
+    "start:web": "nx serve web",
+    "build:api": "nx build api",
+    "build:web": "nx build web",
+    "lint:web": "nx lint web"
   },
   "author": "Amit",
   "license": "ISC",
