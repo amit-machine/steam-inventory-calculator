@@ -1,0 +1,19 @@
+{
+  "name": "api-feature",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/portfolio/api-feature/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/portfolio/api-feature",
+        "main": "libs/portfolio/api-feature/src/index.ts",
+        "tsConfig": "libs/portfolio/api-feature/tsconfig.lib.json",
+        "assets": ["libs/portfolio/api-feature/*.md"]
+      }
+    }
+  }
+}
