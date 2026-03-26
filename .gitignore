@@ -3,3 +3,11 @@ node_modules/
 src/data/prices.json
 src/data/history.json
 .DS_Store
+
+
+.nx/cache
+.nx/workspace-data
+.angular
+dist/
+*.tgz
+.vscode/
