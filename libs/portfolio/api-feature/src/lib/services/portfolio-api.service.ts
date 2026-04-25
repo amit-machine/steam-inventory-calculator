@@ -9,14 +9,16 @@ import {
   resolveItemPrices,
 } from "core";
 import {
+  getLatestPortfolioSummary,
   getPortfolioHistory,
   insertPortfolioHistory,
   loadCachedPrices,
+  savePortfolioSummary,
   saveCachedPrices,
 } from "data-access";
 
-/* Recalculates the full portfolio by loading inventory, pricing items, and storing history. */
-export async function recalculatePortfolio() {
+/* Builds a fresh portfolio summary from inventory, cache, and Steam Market data. */
+async function calculatePortfolioSummary() {
   const accounts = await loadAccountInventory();
   const allItems = getAllInventoryItems(accounts);
   const priceMap = await resolveItemPrices(allItems, {
@@ -36,12 +38,27 @@ export async function recalculatePortfolio() {
     const accountSummary = buildAccountSummary(account.name, pricedItems);
 
     accountSummaries.push(accountSummary);
-    historyEntries.push(createPortfolioHistoryEntry(account.name, accountSummary.StorageValue));
+    historyEntries.push(createPortfolioHistoryEntry(account.name, accountSummary.storageValue));
   }
 
-  await insertPortfolioHistory(historyEntries);
+  return {
+    summary: buildPortfolioSummaryResponse(accountSummaries),
+    historyEntries,
+  };
+}
 
-  return buildPortfolioSummaryResponse(accountSummaries);
+/* Recalculates the full portfolio, stores history, and refreshes the latest summary snapshot. */
+export async function recalculatePortfolio(): Promise<PortfolioSummaryResponse> {
+  const { summary, historyEntries } = await calculatePortfolioSummary();
+  await insertPortfolioHistory(historyEntries);
+  await savePortfolioSummary(summary);
+
+  return summary;
+}
+
+/* Returns the most recently stored portfolio summary without recalculating prices. */
+export async function fetchPortfolioSummary(): Promise<PortfolioSummaryResponse | null> {
+  return getLatestPortfolioSummary();
 }
 
 /* Returns the stored portfolio history entries from MongoDB. */
