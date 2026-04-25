@@ -10,7 +10,8 @@
     "start:web": "nx serve web",
     "build:api": "nx build api",
     "build:web": "nx build web",
-    "lint:web": "nx lint web"
+    "lint:web": "nx lint web",
+    "test": "node -r @swc-node/register --test tests/**/*.test.cjs"
   },
   "author": "Amit",
   "license": "ISC",

@@ -9,12 +9,27 @@ const limiter = new Bottleneck({
 });
 
 /* Converts Steam price text into a number the calculator can use. */
-const parseSteamPrice = (priceText: string | undefined) => {
+export const parseSteamPrice = (priceText: string | undefined) => {
   try {
-    if (!priceText) return 0;
+    if (!priceText) {
+      return 0;
+    }
 
-    const valuePart = priceText.split(" ")[1]?.replace(",", "");
-    return valuePart ? parseFloat(valuePart) : 0;
+    const numericPortion = priceText.replace(/[^\d.,-]/g, "");
+
+    if (!numericPortion) {
+      return 0;
+    }
+
+    const lastCommaIndex = numericPortion.lastIndexOf(",");
+    const lastDotIndex = numericPortion.lastIndexOf(".");
+    const normalizedValue =
+      lastCommaIndex > lastDotIndex
+        ? numericPortion.replace(/\./g, "").replace(",", ".")
+        : numericPortion.replace(/,/g, "");
+    const parsedValue = Number.parseFloat(normalizedValue);
+
+    return Number.isFinite(parsedValue) ? parsedValue : 0;
   } catch {
     return 0;
   }
