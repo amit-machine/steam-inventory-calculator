@@ -1,10 +1,19 @@
 # Steam Inventory Calculator
 
-An Nx monorepo with:
+An Nx monorepo for tracking Steam inventory value with:
 
 - an Express API in `apps/api`
-- an Angular frontend shell in `apps/web`
-- shared portfolio logic in `libs/portfolio/*`
+- an Angular dashboard in `apps/web`
+- shared TypeScript libraries in `libs/portfolio/*`
+- MongoDB for cached prices, saved summaries, and portfolio history
+
+## What This App Does
+
+- reads your editable inventory data from `libs/portfolio/core/src/lib/inventory/inventory.data.ts`
+- fetches Steam Market prices for unique items only once per recalculation
+- reuses fresh cached prices from MongoDB
+- saves portfolio history snapshots in MongoDB
+- saves the latest portfolio summary snapshot so read endpoints stay side-effect free
 
 ## Workspace Structure
 
@@ -15,26 +24,50 @@ apps/
 
 libs/
   portfolio/
-    api-contracts/         Shared response and domain types
+    api-contracts/         Shared request and response types
     api-feature/           API routes and orchestration
-    core/                  Pricing and portfolio calculation logic
+    core/                  Inventory loading, pricing, and portfolio calculation
     data-access/           MongoDB config, models, and repositories
+
+scripts/
+  build-web.mjs            Stable custom web build script used by Nx
+
+tests/
+  pricing.test.cjs         Pricing and cache behavior tests
+  portfolio-routes.test.cjs Route-layer behavior tests
 ```
 
-## Inventory Source
+## Requirements
 
-The editable inventory data now lives in:
+- Node 22
+- npm
+- local MongoDB running on your machine
 
-```text
-libs/portfolio/core/src/lib/inventory/inventory.data.ts
+If you use `nvm`, switch Node first:
+
+```bash
+nvm use 22
 ```
 
-## API Endpoints
+Install dependencies:
 
-- `GET /api/health`
-- `GET /api/portfolio/history`
-- `GET /api/portfolio/summary`
-- `POST /api/portfolio/recalculate`
+```bash
+npm install
+```
+
+## Local MongoDB Setup
+
+Start MongoDB before starting the API:
+
+```bash
+brew services start mongodb-community
+```
+
+You can verify it is running with:
+
+```bash
+brew services list | grep mongodb
+```
 
 ## Environment Variables
 
@@ -52,25 +85,126 @@ MONGODB_DB_NAME=steam_inventory_calculator
 PORT=3333
 ```
 
-## Run The API
+## Running The Apps
 
-Use Node 22 in your shell, then run:
+Start the API:
 
 ```bash
 npm start
 ```
 
-That starts the Express API with Nx.
+The API runs at:
 
-## Other Commands
+```text
+http://localhost:3333/api
+```
+
+Start the Angular frontend in another terminal:
 
 ```bash
 npm run start:web
+```
+
+The frontend calls the API on port `3333` and uses the current browser hostname automatically.
+
+## Build Commands
+
+```bash
 npm run build:api
 npm run build:web
 ```
 
-## Database Collections
+## Test Command
+
+```bash
+npm test
+```
+
+Current test coverage includes:
+
+- Steam price parsing
+- cache-aware item price resolution
+- route validation and route behavior
+
+## API Endpoints
+
+### `GET /api/health`
+
+Simple health response for the backend.
+
+### `GET /api/portfolio/history?limit=12`
+
+Reads saved portfolio history from MongoDB.
+
+- `limit` must be an integer between `1` and `500`
+- this endpoint does not fetch Steam prices
+
+Example response:
+
+```json
+{
+  "entries": [
+    {
+      "accountName": "account1",
+      "storageValue": 12345,
+      "timestamp": "2026-04-25T09:30:00.000Z"
+    }
+  ]
+}
+```
+
+### `GET /api/portfolio/summary`
+
+Reads the latest saved summary snapshot from MongoDB.
+
+- this endpoint does not recalculate prices
+- it returns `404` until you run a recalculation at least once
+
+### `POST /api/portfolio/recalculate`
+
+Recalculates the portfolio from inventory data.
+
+This endpoint:
+
+- loads all accounts from `inventory.data.ts`
+- fetches prices for unique items
+- reuses fresh cache entries when possible
+- stores new history entries
+- stores the latest summary snapshot
+
+Example response:
+
+```json
+{
+  "accounts": [
+    {
+      "account": "account1",
+      "storageValue": 12345,
+      "afterTax": 10740.15,
+      "itemCount": 20,
+      "items": []
+    }
+  ],
+  "portfolio": {
+    "totalValue": 12345,
+    "afterTax": 10740.15,
+    "itemCount": 20
+  },
+  "generatedAt": "2026-04-25T09:30:00.000Z"
+}
+```
+
+## MongoDB Collections
 
 - `price_cache`
 - `portfolio_history`
+- `portfolio_summary`
+
+## Frontend Notes
+
+- the frontend is now wired to the API
+- it loads the latest saved summary on startup
+- it shows recent history entries
+- it lets you trigger a recalculation from the UI
+
+If `GET /api/portfolio/summary` returns `404`, the UI will show an empty state until you run the first recalculation.
