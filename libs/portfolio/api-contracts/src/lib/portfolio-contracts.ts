@@ -13,10 +13,10 @@ export interface PricedItem {
 
 export interface AccountSummary {
   account: string;
-  StorageValue: number;
-  AfterTax: number;
-  Count: number;
-  Items: PricedItem[];
+  storageValue: number;
+  afterTax: number;
+  itemCount: number;
+  items: PricedItem[];
 }
 
 export interface PortfolioTotals {

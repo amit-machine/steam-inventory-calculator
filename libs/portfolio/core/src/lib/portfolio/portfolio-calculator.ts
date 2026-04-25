@@ -36,18 +36,18 @@ export function buildAccountSummary(accountName: string, pricedItems: PricedItem
 
   return {
     account: accountName,
-    StorageValue: Math.floor(totals.storageValue),
-    AfterTax: Math.floor(totals.storageValue * portfolioConfig.TAX_RATE),
-    Count: totals.itemCount,
-    Items: pricedItems,
+    storageValue: Math.floor(totals.storageValue),
+    afterTax: Math.floor(totals.storageValue * portfolioConfig.TAX_RATE),
+    itemCount: totals.itemCount,
+    items: pricedItems,
   };
 }
 
 /* Adds one account summary into the overall portfolio totals. */
 export function addAccountToPortfolioTotals(portfolioTotals: PortfolioTotals, accountSummary: AccountSummary) {
-  portfolioTotals.totalValue += accountSummary.StorageValue;
-  portfolioTotals.afterTax += accountSummary.AfterTax;
-  portfolioTotals.itemCount += accountSummary.Count;
+  portfolioTotals.totalValue += accountSummary.storageValue;
+  portfolioTotals.afterTax += accountSummary.afterTax;
+  portfolioTotals.itemCount += accountSummary.itemCount;
 }
 
 /* Creates a history record that can be inserted into MongoDB after the run finishes. */
@@ -57,11 +57,6 @@ export function createPortfolioHistoryEntry(accountName: string, storageValue: n
     storageValue,
     timestamp: new Date().toISOString(),
   };
-}
-
-/* Creates the in-memory history store used during a single portfolio run. */
-export function createPortfolioHistoryStore() {
-  return [] as PortfolioHistoryEntry[];
 }
 
 /* Creates the final portfolio summary response returned by the API. */
