@@ -1,0 +1,117 @@
+<main class="dashboard-shell">
+  <section class="hero">
+    <div>
+      <p class="eyebrow">Steam Inventory Calculator</p>
+      <h1>Portfolio Dashboard</h1>
+      <p class="hero-copy">
+        Review the latest saved summary, inspect recent history, and trigger a fresh recalculation from the Angular app.
+      </p>
+      <p class="status-line">{{ getSummaryStatusText() }}</p>
+    </div>
+
+    <button
+      class="recalculate-button"
+      type="button"
+      [disabled]="isLoading() || isRecalculating()"
+      (click)="recalculatePortfolio()"
+    >
+      {{ isRecalculating() ? 'Recalculating...' : 'Recalculate Portfolio' }}
+    </button>
+  </section>
+
+  <p *ngIf="errorMessage() as errorMessage" class="error-banner">
+    {{ errorMessage }}
+  </p>
+
+  <ng-container *ngIf="summary() as summary; else emptyState">
+    <section class="stats-grid">
+      <article class="stat-card">
+        <span class="stat-label">Total Value</span>
+        <strong class="stat-value">{{ summary.portfolio.totalValue | number }}</strong>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-label">After Tax</span>
+        <strong class="stat-value">{{ summary.portfolio.afterTax | number }}</strong>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-label">Item Count</span>
+        <strong class="stat-value">{{ summary.portfolio.itemCount | number }}</strong>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-label">Generated At</span>
+        <strong class="stat-value">{{ summary.generatedAt | date: 'medium' }}</strong>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Accounts</h2>
+        <p>{{ summary.accounts.length }} account summaries returned by the API.</p>
+      </div>
+
+      <div class="account-grid">
+        <article *ngFor="let account of summary.accounts; trackBy: trackAccount" class="account-card">
+          <h3>{{ account.account }}</h3>
+          <dl>
+            <div>
+              <dt>Storage Value</dt>
+              <dd>{{ account.storageValue | number }}</dd>
+            </div>
+            <div>
+              <dt>After Tax</dt>
+              <dd>{{ account.afterTax | number }}</dd>
+            </div>
+            <div>
+              <dt>Item Count</dt>
+              <dd>{{ account.itemCount | number }}</dd>
+            </div>
+            <div>
+              <dt>Priced Items</dt>
+              <dd>{{ account.items.length | number }}</dd>
+            </div>
+          </dl>
+        </article>
+      </div>
+    </section>
+  </ng-container>
+
+  <ng-template #emptyState>
+    <section class="panel empty-state">
+      <h2>No Summary Saved Yet</h2>
+      <p>The API does not have a saved snapshot yet. Use the recalculate button to create the first one.</p>
+    </section>
+  </ng-template>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Recent History</h2>
+      <p>Latest stored account snapshots from MongoDB.</p>
+    </div>
+
+    <div *ngIf="historyEntries().length; else noHistory" class="history-table-wrapper">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Account</th>
+            <th>Storage Value</th>
+            <th>Timestamp</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let entry of historyEntries()">
+            <td>{{ entry.accountName }}</td>
+            <td>{{ entry.storageValue | number }}</td>
+            <td>{{ entry.timestamp | date: 'medium' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <ng-template #noHistory>
+      <p class="empty-copy">No history rows exist yet.</p>
+    </ng-template>
+  </section>
+</main>

@@ -2,64 +2,28 @@
   "name": "web",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
+  "root": "apps/web",
   "prefix": "app",
   "sourceRoot": "apps/web/src",
   "tags": [],
   "targets": {
     "build": {
-      "executor": "@angular/build:application",
+      "executor": "nx:run-commands",
       "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/apps/web",
-        "browser": "apps/web/src/main.ts",
-        "index": "apps/web/src/index.html",
-        "polyfills": ["zone.js"],
-        "tsConfig": "apps/web/tsconfig.app.json",
-        "inlineStyleLanguage": "scss",
-        "assets": [
-          {
-            "glob": "**/*",
-            "input": "apps/web/public"
-          }
-        ],
-        "styles": ["apps/web/src/styles.scss"]
-      },
-      "configurations": {
-        "production": {
-          "budgets": [
-            {
-              "type": "initial",
-              "maximumWarning": "500kb",
-              "maximumError": "1mb"
-            },
-            {
-              "type": "anyComponentStyle",
-              "maximumWarning": "4kb",
-              "maximumError": "8kb"
-            }
-          ],
-          "outputHashing": "all"
-        },
-        "development": {
-          "optimization": false,
-          "extractLicenses": false,
-          "sourceMap": true
-        }
-      },
-      "defaultConfiguration": "production"
+        "command": "node scripts/build-web.mjs"
+      }
     },
     "serve": {
       "continuous": true,
-      "executor": "@angular/build:dev-server",
-      "configurations": {
-        "production": {
-          "buildTarget": "web:build:production"
-        },
-        "development": {
-          "buildTarget": "web:build:development"
-        }
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "web:build",
+        "staticFilePath": "dist/apps/web",
+        "spa": true
       },
-      "defaultConfiguration": "development"
+      "defaultConfiguration": "production"
     },
     "lint": {
       "executor": "@nx/eslint:lint"
@@ -69,7 +33,7 @@
       "executor": "@nx/web:file-server",
       "options": {
         "buildTarget": "web:build",
-        "staticFilePath": "dist/apps/web/browser",
+        "staticFilePath": "dist/apps/web",
         "spa": true
       }
     }
