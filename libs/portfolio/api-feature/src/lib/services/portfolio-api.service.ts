@@ -9,7 +9,6 @@ import {
   resolveItemPrices,
 } from "core";
 import {
-  connectToDatabase,
   getPortfolioHistory,
   insertPortfolioHistory,
   loadCachedPrices,
@@ -18,8 +17,6 @@ import {
 
 /* Recalculates the full portfolio by loading inventory, pricing items, and storing history. */
 export async function recalculatePortfolio() {
-  await connectToDatabase();
-
   const accounts = await loadAccountInventory();
   const allItems = getAllInventoryItems(accounts);
   const priceMap = await resolveItemPrices(allItems, {
@@ -49,8 +46,6 @@ export async function recalculatePortfolio() {
 
 /* Returns the stored portfolio history entries from MongoDB. */
 export async function fetchPortfolioHistory(limit = 100): Promise<PortfolioHistoryResponse> {
-  await connectToDatabase();
-
   return {
     entries: await getPortfolioHistory(limit),
   };
