@@ -16,7 +16,6 @@
       "inputs": ["default", "^default"]
     }
   },
-  
   "plugins": [
     {
       "plugin": "@nx/webpack/plugin",
