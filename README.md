@@ -1,28 +1,13 @@
 # Steam Inventory Calculator
 
-An Nx monorepo for tracking Steam inventory value with:
+Backend-first Nx monorepo for calculating Steam inventory value.
 
-- an Express API in `apps/api`
-- a frontend app in `apps/web` (previously Angular)
-- shared TypeScript libraries in `libs/portfolio/*`
-- MongoDB for cached prices, saved summaries, and portfolio history
+Contents
 
-## What This App Does
+- `apps/api` — Express backend exposing REST endpoints for portfolio history, summary, and recalculation.
+- `libs/portfolio/*` — shared TypeScript libraries: `core` (inventory & pricing), `data-access` (MongoDB models/repositories), and `api-feature` helpers.
 
-- reads your editable inventory data from `libs/portfolio/core/src/lib/inventory/inventory.data.ts`
-- fetches Steam Market prices for unique items only once per recalculation
-- reuses fresh cached prices from MongoDB
-- saves portfolio history snapshots in MongoDB
-# Steam Inventory Calculator
-
-Small Nx-style monorepo focused on the backend API for calculating Steam inventory value.
-
-What remains in this repo:
-
-- `apps/api` — Express backend that exposes REST endpoints for portfolio history, summary, and recalculation.
-- `libs/portfolio/*` — shared TypeScript libraries: `core` (inventory & pricing), `data-access` (MongoDB models/repositories), and `api-*` helpers.
-
-Why the repo exists
+What it does
 
 - Loads editable inventory from `libs/portfolio/core/src/lib/inventory/inventory.data.ts`.
 - Resolves Steam Market prices for unique items, using a MongoDB-backed cache to avoid repeated fetches.
@@ -62,11 +47,6 @@ npm start
 npm test
 ```
 
-Notes
-
-- The frontend previously lived under `apps/web` (Angular). It has been removed — the repository is being kept backend-first until a React frontend is scaffolded.
-- A Docker Compose for local MongoDB would make running the API easier; I can add that if you want.
-
 API Endpoints (summary)
 
 - `GET /api/health` — lightweight health check.
@@ -74,11 +54,59 @@ API Endpoints (summary)
 - `GET /api/portfolio/summary` — returns latest stored summary snapshot (404 if none exists).
 - `POST /api/portfolio/recalculate` — recalculates using `inventory.data.ts`, resolves prices, stores history and latest summary.
 
-Where to next
+Examples
 
-- I can scaffold a minimal React frontend and wire it to the API, or
-- Add `docker-compose.yml` to run MongoDB + API for local development, or
-- Continue improving backend features (logging, metrics, CI).
+1) GET portfolio history (example response):
 
-If you want a React frontend now, tell me whether you'd like Nx-based React or a lightweight Vite + React app.
-MONGODB_DB_NAME=steam_inventory_calculator
+```json
+{
+	"entries": [
+		{
+			"accountName": "account1",
+			"storageValue": 12345,
+			"timestamp": "2026-04-25T09:30:00.000Z"
+		}
+	]
+}
+```
+
+2) GET portfolio summary (example when snapshot exists):
+
+```json
+{
+	"accounts": [
+		{
+			"account": "account1",
+			"storageValue": 12345,
+			"afterTax": 10740.15,
+			"itemCount": 20,
+			"items": []
+		}
+	],
+	"portfolio": {
+		"totalValue": 12345,
+		"afterTax": 10740.15,
+		"itemCount": 20
+	},
+	"generatedAt": "2026-04-25T09:30:00.000Z"
+}
+```
+
+3) POST recalculation (triggers full recalculation and stores snapshots):
+
+```bash
+curl -X POST http://localhost:3333/api/portfolio/recalculate
+```
+
+Notes
+
+- The frontend that used to live in `apps/web` (Angular) was removed; this repo is backend-first until a React frontend is added.
+- I can add a `docker-compose.yml` to run MongoDB + API locally if you'd like.
+
+Next steps
+
+- Scaffold a React frontend (Nx React or Vite + React), or
+- Add Docker Compose for local MongoDB, or
+- Continue backend improvements (logging, metrics, CI).
+
+Tell me which you'd like me to do next.
