@@ -3,7 +3,7 @@
 An Nx monorepo for tracking Steam inventory value with:
 
 - an Express API in `apps/api`
-- an Angular dashboard in `apps/web`
+- a frontend app in `apps/web` (previously Angular)
 - shared TypeScript libraries in `libs/portfolio/*`
 - MongoDB for cached prices, saved summaries, and portfolio history
 
@@ -20,7 +20,7 @@ An Nx monorepo for tracking Steam inventory value with:
 ```text
 apps/
   api/                     Express backend
-  web/                     Angular frontend
+  web/                     Frontend app (removed - planned React)
 
 libs/
   portfolio/
@@ -99,11 +99,7 @@ The API runs at:
 http://localhost:3333/api
 ```
 
-Start the Angular frontend in another terminal:
-
-```bash
-npm run start:web
-```
+Frontend used to be Angular and was removed; scaffold a React frontend when ready.
 
 The frontend calls the API on port `3333` and uses the current browser hostname automatically.
 

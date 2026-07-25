@@ -7,7 +7,7 @@ src/data/history.json
 
 .nx/cache
 .nx/workspace-data
-.angular
+ 
 dist/
 *.tgz
 .vscode/
