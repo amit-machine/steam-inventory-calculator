@@ -13,65 +13,30 @@ An Nx monorepo for tracking Steam inventory value with:
 - fetches Steam Market prices for unique items only once per recalculation
 - reuses fresh cached prices from MongoDB
 - saves portfolio history snapshots in MongoDB
-- saves the latest portfolio summary snapshot so read endpoints stay side-effect free
+# Steam Inventory Calculator
 
-## Workspace Structure
+Small Nx-style monorepo focused on the backend API for calculating Steam inventory value.
 
-```text
-apps/
-  api/                     Express backend
-  web/                     Frontend app (removed - planned React)
+What remains in this repo:
 
-libs/
-  portfolio/
-    api-contracts/         Shared request and response types
-    api-feature/           API routes and orchestration
-    core/                  Inventory loading, pricing, and portfolio calculation
-    data-access/           MongoDB config, models, and repositories
+- `apps/api` — Express backend that exposes REST endpoints for portfolio history, summary, and recalculation.
+- `libs/portfolio/*` — shared TypeScript libraries: `core` (inventory & pricing), `data-access` (MongoDB models/repositories), and `api-*` helpers.
 
-scripts/
-  build-web.mjs            Stable custom web build script used by Nx
+Why the repo exists
 
-tests/
-  pricing.test.cjs         Pricing and cache behavior tests
-  portfolio-routes.test.cjs Route-layer behavior tests
-```
+- Loads editable inventory from `libs/portfolio/core/src/lib/inventory/inventory.data.ts`.
+- Resolves Steam Market prices for unique items, using a MongoDB-backed cache to avoid repeated fetches.
+- Persists portfolio history and a latest summary snapshot to MongoDB.
 
-## Requirements
+Quickstart (backend)
 
-- Node 22
-- npm
-- local MongoDB running on your machine
-
-If you use `nvm`, switch Node first:
-
-```bash
-nvm use 22
-```
-
-Install dependencies:
+1. Install dependencies:
 
 ```bash
 npm install
 ```
 
-## Local MongoDB Setup
-
-Start MongoDB before starting the API:
-
-```bash
-brew services start mongodb-community
-```
-
-You can verify it is running with:
-
-```bash
-brew services list | grep mongodb
-```
-
-## Environment Variables
-
-Create a `.env` file in the project root:
+2. Provide environment variables (create a `.env` in project root):
 
 ```env
 APP_ID=730
@@ -85,122 +50,35 @@ MONGODB_DB_NAME=steam_inventory_calculator
 PORT=3333
 ```
 
-## Running The Apps
-
-Start the API:
+3. Start the API:
 
 ```bash
 npm start
 ```
 
-The API runs at:
-
-```text
-http://localhost:3333/api
-```
-
-Frontend used to be Angular and was removed; scaffold a React frontend when ready.
-
-The frontend calls the API on port `3333` and uses the current browser hostname automatically.
-
-## Build Commands
-
-```bash
-npm run build:api
-npm run build:web
-```
-
-## Test Command
+4. Run tests:
 
 ```bash
 npm test
 ```
 
-Current test coverage includes:
+Notes
 
-- Steam price parsing
-- cache-aware item price resolution
-- route validation and route behavior
+- The frontend previously lived under `apps/web` (Angular). It has been removed — the repository is being kept backend-first until a React frontend is scaffolded.
+- A Docker Compose for local MongoDB would make running the API easier; I can add that if you want.
 
-## API Endpoints
+API Endpoints (summary)
 
-### `GET /api/health`
+- `GET /api/health` — lightweight health check.
+- `GET /api/portfolio/history?limit=<n>` — returns stored portfolio history (no recalculation). `limit` must be 1..500.
+- `GET /api/portfolio/summary` — returns latest stored summary snapshot (404 if none exists).
+- `POST /api/portfolio/recalculate` — recalculates using `inventory.data.ts`, resolves prices, stores history and latest summary.
 
-Simple health response for the backend.
+Where to next
 
-### `GET /api/portfolio/history?limit=12`
+- I can scaffold a minimal React frontend and wire it to the API, or
+- Add `docker-compose.yml` to run MongoDB + API for local development, or
+- Continue improving backend features (logging, metrics, CI).
 
-Reads saved portfolio history from MongoDB.
-
-- `limit` must be an integer between `1` and `500`
-- this endpoint does not fetch Steam prices
-
-Example response:
-
-```json
-{
-  "entries": [
-    {
-      "accountName": "account1",
-      "storageValue": 12345,
-      "timestamp": "2026-04-25T09:30:00.000Z"
-    }
-  ]
-}
-```
-
-### `GET /api/portfolio/summary`
-
-Reads the latest saved summary snapshot from MongoDB.
-
-- this endpoint does not recalculate prices
-- it returns `404` until you run a recalculation at least once
-
-### `POST /api/portfolio/recalculate`
-
-Recalculates the portfolio from inventory data.
-
-This endpoint:
-
-- loads all accounts from `inventory.data.ts`
-- fetches prices for unique items
-- reuses fresh cache entries when possible
-- stores new history entries
-- stores the latest summary snapshot
-
-Example response:
-
-```json
-{
-  "accounts": [
-    {
-      "account": "account1",
-      "storageValue": 12345,
-      "afterTax": 10740.15,
-      "itemCount": 20,
-      "items": []
-    }
-  ],
-  "portfolio": {
-    "totalValue": 12345,
-    "afterTax": 10740.15,
-    "itemCount": 20
-  },
-  "generatedAt": "2026-04-25T09:30:00.000Z"
-}
-```
-
-## MongoDB Collections
-
-- `price_cache`
-- `portfolio_history`
-- `portfolio_summary`
-
-## Frontend Notes
-
-- the frontend is now wired to the API
-- it loads the latest saved summary on startup
-- it shows recent history entries
-- it lets you trigger a recalculation from the UI
-
-If `GET /api/portfolio/summary` returns `404`, the UI will show an empty state until you run the first recalculation.
+If you want a React frontend now, tell me whether you'd like Nx-based React or a lightweight Vite + React app.
+MONGODB_DB_NAME=steam_inventory_calculator
